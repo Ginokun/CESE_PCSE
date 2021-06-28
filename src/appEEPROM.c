@@ -12,6 +12,18 @@
 
 #define tag "appEEPROM"
 
+
+
+static esp_err_t EEPROM_Get_Next_Event_Address(EEPROM_t *dev, uint16_t *get_address);
+static esp_err_t EEPROM_Read_Data(EEPROM_t *dev, uint32_t * Data, ssize_t Data_Size, uint16_t read_address);
+static esp_err_t EEPROM_Save_Data(EEPROM_t *dev, uint32_t Data, ssize_t Data_Size, uint16_t save_address);
+static esp_err_t EEPROM_Save_Next_Event_Address(EEPROM_t *dev, uint16_t save_address);
+static void Print_Event(event_t event);
+
+
+
+
+
 static esp_err_t EEPROM_Read_Data(EEPROM_t *dev, uint32_t *Data, ssize_t Data_Size, uint16_t read_address)
 {
     esp_err_t ret = 0;
@@ -63,35 +75,58 @@ static esp_err_t EEPROM_Save_Data(EEPROM_t *dev, uint32_t Data, ssize_t Data_Siz
     return ret;
 }
 
-esp_err_t EEPROM_Index_Init(EEPROM_t *dev)
+esp_err_t EEPROM_Index_Init(EEPROM_t *dev, event_t *event)
 {
     esp_err_t ret;
-    uint16_t data = 0;
+    uint16_t aux_address = 0;
 
-    //Se inicializa el indice que apunta a la primera direccion de los eventos.
-    ret = EEPROM_Save_Data(dev, FIRST_EVENT_ADDRESS, sizeof((uint16_t)FIRST_EVENT_ADDRESS), INDEX_FIRST_EVENT_ADDRESS);
+    //Conseguir la direccion del primer evento para ver si se inicializo la memoria.
+    ret = EEPROM_Read_Data(dev, (uint32_t *)&aux_address, sizeof(aux_address), INDEX_FIRST_EVENT_ADDRESS);
     if (ret != ESP_OK)
     {
-        ESP_LOGI(tag, "EEPROM Init, write first Event Failed %d", ret);
+        ESP_LOGI(tag, "Read Data fail: %d", ret);
         return ret;
     }
-    //Se inicializa el indice que apunta a la proxima direccion donde guardar un evento. Al no haber eventos, es la misma del primer evento.
-    ret = EEPROM_Save_Data(dev, FIRST_EVENT_ADDRESS, sizeof((uint16_t)FIRST_EVENT_ADDRESS), INDEX_NEXT_EVENT_ADDRESS);
+    //En caso de no estar inicializado el indice, se inicializa.
+    if (aux_address != FIRST_EVENT_ADDRESS)
+    {
+        //Se inicializa el indice que apunta a la primera direccion de los eventos.
+        ret = EEPROM_Save_Data(dev, FIRST_EVENT_ADDRESS, sizeof((uint16_t)FIRST_EVENT_ADDRESS), INDEX_FIRST_EVENT_ADDRESS);
+        if (ret != ESP_OK)
+        {
+            ESP_LOGI(tag, "EEPROM Init, write first Event Failed %d", ret);
+            return ret;
+        }
+        //Se inicializa el indice que apunta a la proxima direccion donde guardar un evento. Al no haber eventos, es la misma del primer evento.
+        ret = EEPROM_Save_Data(dev, FIRST_EVENT_ADDRESS, sizeof((uint16_t)FIRST_EVENT_ADDRESS), INDEX_NEXT_EVENT_ADDRESS);
+        if (ret != ESP_OK)
+        {
+            ESP_LOGI(tag, "EEPROM Init, write first Event Failed %d", ret);
+            return ret;
+        }
+    }
+    //Se obtiene la direccion en memoria del proximo evento para leer el ID del ultimo evento guardado y poder continuar con la numeracion.
+    aux_address = 0;
+    ret = EEPROM_Get_Next_Event_Address(dev, &aux_address);
     if (ret != ESP_OK)
     {
-        ESP_LOGI(tag, "EEPROM Init, write first Event Failed %d", ret);
+        ESP_LOGI(tag, "Error getting next event address \n");
         return ret;
     }
+    if (aux_address > FIRST_EVENT_ADDRESS)
+    {
+        aux_address = aux_address - 24;
+        aux_address = aux_address - sizeof(event->event_TYPE);
+        aux_address = aux_address - sizeof(event->event_ID);
 
-    if (data != 0xFF)
-    {
-        return ret;
+        ret = EEPROM_Read_Data(dev, (uint32_t *)&(event->event_ID), sizeof(event->event_ID), aux_address);
+        if (ret != ESP_OK)
+        {
+            ESP_LOGI(tag, "Read Data fail: %d", ret);
+            return ret;
+        }
     }
-    else
-    {
-        return ret;
-        //todo: Completar inicializacion de la memoria!
-    }
+    return ret;
 }
 
 static esp_err_t EEPROM_Get_Next_Event_Address(EEPROM_t *dev, uint16_t *get_address) //Se obtiene la direccion en memoria del proximo evento.

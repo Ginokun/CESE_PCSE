@@ -43,10 +43,10 @@ void app_main()
     /****************************/
     const struct tm time = {
         .tm_year = 2021,
-        .tm_mon = 4, // 0-based
-        .tm_mday = 24,
-        .tm_hour = 0,
-        .tm_min = 0,
+        .tm_mon = 5, // 0-based
+        .tm_mday = 28,
+        .tm_hour = 13,
+        .tm_min = 14,
         .tm_sec = 0};
     /****************************/
 
@@ -68,7 +68,7 @@ void app_main()
     ESP_LOGI(pcTaskGetTaskName(0), "I2C EEPROM communication successfully initialized.\n");
 
     UART_Init();
-    EEPROM_Index_Init(&dev_EEPROM);
+    EEPROM_Index_Init(&dev_EEPROM, &new_event);
 
     //Create Semaphores and initializations
 

@@ -57,7 +57,7 @@ typedef struct
     struct tm time_stamp;
 } event_t;
 
-esp_err_t EEPROM_Index_Init(EEPROM_t *dev);
+esp_err_t EEPROM_Index_Init(EEPROM_t *dev, event_t *event);
 
 //static esp_err_t EEPROM_Get_Next_Event_Address(EEPROM_t *dev, uint16_t *get_address);
 //static esp_err_t EEPROM_Read_Data(EEPROM_t *dev, uint32_t Data, ssize_t Data_Size, uint16_t read_address);
